@@ -2,7 +2,7 @@ Analysis of a JavaScript loader by hooking Windows API functions.
 
 `Hash: a3937eb4681dc2a090360d9220c42ca25b51075542902a647839fe5f3c892097`
 
-`Sample:  [Here](https://bazaar.abuse.ch/sample/a3937eb4681dc2a090360d9220c42ca25b51075542902a647839fe5f3c892097/#intel)`
+`Sample: https://bazaar.abuse.ch/sample/a3937eb4681dc2a090360d9220c42ca25b51075542902a647839fe5f3c892097/#intel`
 
 ***Overview***
 
